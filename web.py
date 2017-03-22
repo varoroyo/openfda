@@ -60,8 +60,8 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         data1 = r1.read()
         data = data1.decode('utf8')
         events = json.loads(data)
-        #event = events['results'][0]['patient']['drug']
         return events
+
     def get_medicinalproduct(self,com_num):
         conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
         conn.request("GET", self.OPENFDA_API_EVENT + '?search=companynumb:'+com_num+'&limit=10')
@@ -82,14 +82,16 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         data1 = r1.read()
         data = data1.decode('utf8')
         events = json.loads(data)
-        #event = events['results'][0]['patient']['drug']
+
         return events
+
     def get_drug(self, events):
         medicamentos=[]
         for event in events['results']:
             medicamentos+=[event['patient']['drug'][0]['medicinalproduct']]
 
         return medicamentos
+        
     def get_com_num(self, events):
         com_num=[]
         for event in events['results']:
