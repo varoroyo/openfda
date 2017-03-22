@@ -1,4 +1,4 @@
-# Copyright [2017] [name of copyright owner]
+# Copyright [2017] [Álvaro Román]
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -91,7 +91,7 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             medicamentos+=[event['patient']['drug'][0]['medicinalproduct']]
 
         return medicamentos
-        
+
     def get_com_num(self, events):
         com_num=[]
         for event in events['results']:
