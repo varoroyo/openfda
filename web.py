@@ -34,20 +34,25 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             <body>
                 <h1>OpenFDA Client</h1>
                 <form method='get' action='listDrugs'>
-                    <input type='submit' value='List Drugs'>
-                    </input>
+                    <input type='submit' value='List Drugs'></input>
+                    limit: <input type='text' name='limit'></input>
+
                 </form>
                 <form method='get' action='searchDrug'>
-                    <input type='text' name='drug'></input>
+                    drug: <input type='text' name='drug'></input>
                     <input type='submit' value='Search Drug'></input>
                 </form>
                 <form method='get' action='listCompanies'>
                     <input type='submit' value='List Companies'></input>
+                    limit: <input type='text' name='limit'></input>
                 </form>
                 <form method='get' action='searchCompany'>
-                    <input type='text' name='company'></input>
+                    company: <input type='text' name='company'></input>
                     <input type='submit' value='Search Company'></input>
                 </form>
+                <form method='get' action='Gender'>
+                    <input type='submit' value='Get gender'></input>
+                    limit: <input type= 'text' name='limit'></input>
             </body>
         </html>
                 '''
@@ -73,10 +78,10 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         return events
 
-    def get_event(self):
+    def get_event(self, limit):
 
         conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
-        conn.request("GET", self.OPENFDA_API_EVENT + '?limit=10')
+        conn.request("GET", self.OPENFDA_API_EVENT + '?limit='+limit)
         r1 = conn.getresponse()
         print(r1.status, r1.reason)
         data1 = r1.read()
@@ -98,6 +103,12 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             com_num+=[event['companynumb']]
         return com_num
 
+    def get_gender(self, events):
+        gender=[]
+        for event in events['results']:
+            gender+=[event['patient']['patientsex']]
+        return gender
+
     def drug_page(self,medicamentos):
         s=''
         for drug in medicamentos:
@@ -106,9 +117,9 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         <html>
             <head></head>
                 <body>
-                    <ul>
+                    <ol>
                         %s
-                    </ul>
+                    </ol>
                 </body>
         </html>''' %(s)
         return html
@@ -127,7 +138,8 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             html = self.get_main_page()
             self.wfile.write(bytes(html,'utf8'))
         elif 'listDrugs' in self.path:
-            events = self.get_event()
+            limit = self.path.split('=')[1]
+            events = self.get_event(limit)
             medicamentos = self.get_drug(events)
             html = self.drug_page(medicamentos)
             self.wfile.write(bytes(html,'utf8'))
@@ -141,7 +153,8 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(bytes(html,'utf8'))
 
         elif 'listCompanies' in self.path:
-            events = self.get_event()
+            limit = self.path.split('=')[1]
+            events = self.get_event(limit)
             com_num = self.get_com_num(events)
             html = self.drug_page(com_num)
             self.wfile.write(bytes(html,'utf8'))
@@ -153,6 +166,13 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             events = self.get_medicinalproduct(com_num)
             medicinalproduct = self.get_drug(events)
             html = self.drug_page(medicinalproduct)
+            self.wfile.write(bytes(html,'utf8'))
+
+        elif 'Gender' in self.path:
+            limit = self.path.split('=')[1]
+            events = self.get_event(limit)
+            gender = self.get_gender(events)
+            html = self.drug_page(gender)
             self.wfile.write(bytes(html,'utf8'))
 
         return
