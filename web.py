@@ -19,11 +19,43 @@ import http.client
 import json
 import socketserver
 
-class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
+class OpenFDAClient():
 
     OPENFDA_API_URL = "api.fda.gov"
     OPENFDA_API_EVENT = "/drug/event.json"
-    OPENFDA_API_LYRICA = '?search=patient.drug.medicinalproduct:"LYRICA"&limit=10'
+
+    def get_med(self,drug):
+        conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
+        conn.request("GET", self.OPENFDA_API_EVENT + '?search=patient.drug.medicinalproduct:'+drug+'&limit=10')
+        r1 = conn.getresponse()
+        print(r1.status, r1.reason)
+        data1 = r1.read()
+        data = data1.decode('utf8')
+        events = json.loads(data)
+        return events
+
+    def get_medicinalproduct(self,com_num):
+        conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
+        conn.request("GET", self.OPENFDA_API_EVENT + '?search=companynumb:'+com_num+'&limit=10')
+        r1 = conn.getresponse()
+        print(r1.status, r1.reason)
+        data1 = r1.read()
+        data = data1.decode('utf8')
+        events = json.loads(data)
+        return events
+
+    def get_event(self, limit):
+
+        conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
+        conn.request("GET", self.OPENFDA_API_EVENT + '?limit='+limit)
+        r1 = conn.getresponse()
+        print(r1.status, r1.reason)
+        data1 = r1.read()
+        data = data1.decode('utf8')
+        events = json.loads(data)
+        return events
+
+class OpenFDAHTML():
 
     def get_main_page(self):
         html = '''
@@ -50,45 +82,44 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                     company: <input type='text' name='company'></input>
                     <input type='submit' value='Search Company'></input>
                 </form>
-                <form method='get' action='Gender'>
+                <form method='get' action='listGender'>
                     <input type='submit' value='Get gender'></input>
                     limit: <input type= 'text' name='limit'></input>
             </body>
         </html>
                 '''
         return html
-    def get_med(self,drug):
-        conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
-        conn.request("GET", self.OPENFDA_API_EVENT + '?search=patient.drug.medicinalproduct:'+drug+'&limit=10')
-        r1 = conn.getresponse()
-        print(r1.status, r1.reason)
-        data1 = r1.read()
-        data = data1.decode('utf8')
-        events = json.loads(data)
-        return events
+    def drug_page(self,medicamentos):
+        s=''
+        for drug in medicamentos:
+            s += "<li>"+drug+"</li>"
+        html='''
+        <html>
+            <head></head>
+                <body>
+                    <ol>
+                        %s
+                    </ol>
+                </body>
+        </html>''' %(s)
+        return html
 
-    def get_medicinalproduct(self,com_num):
-        conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
-        conn.request("GET", self.OPENFDA_API_EVENT + '?search=companynumb:'+com_num+'&limit=10')
-        r1 = conn.getresponse()
-        print(r1.status, r1.reason)
-        data1 = r1.read()
-        data = data1.decode('utf8')
-        events = json.loads(data)
+    def error_html(self):
+        html='''
+        <html>
+            <head>
+                <title>file not found</title>
+            </head>
+                <body>
+                <h1>Error 404</h1>
+                File not found
+                Error 404
+                </body>
+        </html>'''
 
-        return events
+        return html
 
-    def get_event(self, limit):
-
-        conn = http.client.HTTPSConnection(self.OPENFDA_API_URL)
-        conn.request("GET", self.OPENFDA_API_EVENT + '?limit='+limit)
-        r1 = conn.getresponse()
-        print(r1.status, r1.reason)
-        data1 = r1.read()
-        data = data1.decode('utf8')
-        events = json.loads(data)
-
-        return events
+class OpenFDAParser():
 
     def get_drug(self, events):
         medicamentos=[]
@@ -109,70 +140,61 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             gender+=[event['patient']['patientsex']]
         return gender
 
-    def drug_page(self,medicamentos):
-        s=''
-        for drug in medicamentos:
-            s += "<li>"+drug+"</li>"
-        html='''
-        <html>
-            <head></head>
-                <body>
-                    <ol>
-                        %s
-                    </ol>
-                </body>
-        </html>''' %(s)
-        return html
+class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
 
+        client = OpenFDAClient()
+        HTMLcode = OpenFDAHTML()
+        parser = OpenFDAParser()
         print (self.path)
-        #print (self.path)
-
-        self.send_response(200)
-
-        self.send_header('Content-type','text/html')
-        self.end_headers()
 
         if self.path == '/' :
-            html = self.get_main_page()
-            self.wfile.write(bytes(html,'utf8'))
+            html = HTMLcode.get_main_page()
+            self.send_response(200)
+
         elif 'listDrugs' in self.path:
             limit = self.path.split('=')[1]
-            events = self.get_event(limit)
-            medicamentos = self.get_drug(events)
-            html = self.drug_page(medicamentos)
-            self.wfile.write(bytes(html,'utf8'))
+            events = client.get_event(limit)
+            medicamentos = parser.get_drug(events)
+            html = HTMLcode.drug_page(medicamentos)
+            self.send_response(200)
 
         elif 'searchDrug' in self.path:
             drug=self.path.split('=')[1]
-            print (drug)
-            events = self.get_med(drug)
-            com_num = self.get_com_num(events)
-            html = self.drug_page(com_num)
-            self.wfile.write(bytes(html,'utf8'))
+            events = client.get_med(drug)
+            com_num = parser.get_com_num(events)
+            html = HTMLcode.drug_page(com_num)
+            self.send_response(200)
 
         elif 'listCompanies' in self.path:
             limit = self.path.split('=')[1]
-            events = self.get_event(limit)
-            com_num = self.get_com_num(events)
-            html = self.drug_page(com_num)
-            self.wfile.write(bytes(html,'utf8'))
-
+            events = client.get_event(limit)
+            com_num = parser.get_com_num(events)
+            html = HTMLcode.drug_page(com_num)
+            self.send_response(200)
 
         elif 'searchCompany' in self.path:
             com_num = self.path.split('=')[1]
             print (com_num)
-            events = self.get_medicinalproduct(com_num)
-            medicinalproduct = self.get_drug(events)
-            html = self.drug_page(medicinalproduct)
-            self.wfile.write(bytes(html,'utf8'))
+            events = client.get_medicinalproduct(com_num)
+            medicinalproduct = parser.get_drug(events)
+            html = HTMLcode.drug_page(medicinalproduct)
+            self.send_response(200)
 
-        elif 'Gender' in self.path:
+        elif 'listGender' in self.path:
             limit = self.path.split('=')[1]
-            events = self.get_event(limit)
-            gender = self.get_gender(events)
-            html = self.drug_page(gender)
-            self.wfile.write(bytes(html,'utf8'))
+            events = client.get_event(limit)
+            gender = parser.get_gender(events)
+            html = HTMLcode.drug_page(gender)
+            self.send_response(200)
+
+        else:
+            html=HTMLcode.error_html()
+            self.send_response(404)
+
+        self.send_header('Content-type','text/html')
+        self.end_headers()
+        self.wfile.write(bytes(html,'utf8'))
 
         return
