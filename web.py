@@ -148,31 +148,33 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
         HTMLcode = OpenFDAHTML()
         parser = OpenFDAParser()
         print (self.path)
-
+        response = 200
+        h1 = 'Content-type'
+        h2 = 'text/html'
         if self.path == '/' :
             html = HTMLcode.get_main_page()
-            self.send_response(200)
+
 
         elif 'listDrugs' in self.path:
             limit = self.path.split('=')[1]
             events = client.get_event(limit)
             medicamentos = parser.get_drug(events)
             html = HTMLcode.drug_page(medicamentos)
-            self.send_response(200)
+
 
         elif 'searchDrug' in self.path:
             drug=self.path.split('=')[1]
             events = client.get_med(drug)
             com_num = parser.get_com_num(events)
             html = HTMLcode.drug_page(com_num)
-            self.send_response(200)
+
 
         elif 'listCompanies' in self.path:
             limit = self.path.split('=')[1]
             events = client.get_event(limit)
             com_num = parser.get_com_num(events)
             html = HTMLcode.drug_page(com_num)
-            self.send_response(200)
+
 
         elif 'searchCompany' in self.path:
             com_num = self.path.split('=')[1]
@@ -180,21 +182,38 @@ class testHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             events = client.get_medicinalproduct(com_num)
             medicinalproduct = parser.get_drug(events)
             html = HTMLcode.drug_page(medicinalproduct)
-            self.send_response(200)
+
 
         elif 'listGender' in self.path:
             limit = self.path.split('=')[1]
             events = client.get_event(limit)
             gender = parser.get_gender(events)
             html = HTMLcode.drug_page(gender)
-            self.send_response(200)
+
+
+        elif 'secret' in self.path:
+            response = 401
+            h1 = 'WWW-Authenticate'
+            h2 = 'Basic realm="My Realm"'
+
+        elif 'redirect' in self.path:
+            response = 302
+            h1='location'
+            h2='http://localhost:8000/'
 
         else:
             html=HTMLcode.error_html()
-            self.send_response(404)
+            response = 404
+            h1 = 'Content-type'
+            h2 = 'text/html'
 
-        self.send_header('Content-type','text/html')
+        self.send_response(response)
+        self.send_header(h1,h2)
         self.end_headers()
-        self.wfile.write(bytes(html,'utf8'))
+
+        if response == 200 or response == 404:
+            self.wfile.write(bytes(html,'utf8'))
+
+
 
         return
